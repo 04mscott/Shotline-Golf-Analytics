@@ -23,6 +23,18 @@ class Brands(Base):
     shaft_models: Mapped[list['ShaftModels']] = relationship('ShaftModels', back_populates='brand')
 
 
+t_detailed_hole_scores = Table(
+    'detailed_hole_scores', Base.metadata,
+    Column('round_id', Integer),
+    Column('hole_num', SmallInteger),
+    Column('par', SmallInteger),
+    Column('score', BigInteger),
+    Column('putts', BigInteger),
+    Column('gir', Boolean),
+    Column('fairway_hit', Boolean)
+)
+
+
 class Facilities(Base):
     __tablename__ = 'facilities'
     __table_args__ = (
@@ -49,7 +61,8 @@ t_hole_scores = Table(
     Column('score', BigInteger),
     Column('putts', BigInteger),
     Column('gir', Boolean),
-    Column('fairway_hit', Boolean)
+    Column('fairway_hit', Boolean),
+    Column('detailed', Boolean)
 )
 
 
@@ -63,7 +76,10 @@ t_round_scores = Table(
     Column('gross_score', Numeric),
     Column('to_par', Numeric),
     Column('putts', Numeric),
-    Column('greens_in_regulation', BigInteger)
+    Column('greens_in_regulation', BigInteger),
+    Column('gir_holes', BigInteger),
+    Column('fairways_hit', BigInteger),
+    Column('fairway_holes', BigInteger)
 )
 
 
@@ -250,6 +266,8 @@ class Rounds(Base):
     bag_club: Mapped[list['BagClubs']] = relationship('BagClubs', secondary='round_clubs', back_populates='round')
     tee: Mapped['Tees'] = relationship('Tees', back_populates='rounds')
     user: Mapped['Users'] = relationship('Users', back_populates='rounds')
+    round_holes: Mapped[list['RoundHoles']] = relationship('RoundHoles', back_populates='round')
+    hole_summaries: Mapped[list['HoleSummaries']] = relationship('HoleSummaries', back_populates='round')
     strokes: Mapped[list['Strokes']] = relationship('Strokes', back_populates='round')
 
 
@@ -263,18 +281,66 @@ t_round_clubs = Table(
 )
 
 
+class RoundHoles(Base):
+    __tablename__ = 'round_holes'
+    __table_args__ = (
+        CheckConstraint("entry_mode = ANY (ARRAY['detailed'::text, 'summary'::text])", name='round_holes_entry_mode_check'),
+        CheckConstraint('hole_num >= 1 AND hole_num <= 18', name='round_holes_hole_num_check'),
+        ForeignKeyConstraint(['round_id'], ['rounds.id'], ondelete='CASCADE', name='round_holes_round_id_fkey'),
+        PrimaryKeyConstraint('round_id', 'hole_num', name='round_holes_pkey'),
+        UniqueConstraint('round_id', 'hole_num', 'entry_mode', name='round_holes_round_id_hole_num_entry_mode_key')
+    )
+
+    round_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hole_num: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    entry_mode: Mapped[str] = mapped_column(Text, nullable=False)
+
+    round: Mapped['Rounds'] = relationship('Rounds', back_populates='round_holes')
+    hole_summaries: Mapped[list['HoleSummaries']] = relationship('HoleSummaries', back_populates='round_holes')
+    strokes: Mapped[list['Strokes']] = relationship('Strokes', back_populates='round_holes')
+
+
+class HoleSummaries(Base):
+    __tablename__ = 'hole_summaries'
+    __table_args__ = (
+        CheckConstraint('(putts + penalty_strokes) <= score', name='hole_summaries_check'),
+        CheckConstraint("entry_mode = 'summary'::text", name='hole_summaries_entry_mode_check'),
+        CheckConstraint('hole_num >= 1 AND hole_num <= 18', name='hole_summaries_hole_num_check'),
+        CheckConstraint('penalty_strokes >= 0', name='hole_summaries_penalty_strokes_check'),
+        CheckConstraint('putts >= 0', name='hole_summaries_putts_check'),
+        CheckConstraint('score >= 1', name='hole_summaries_score_check'),
+        ForeignKeyConstraint(['round_id', 'hole_num', 'entry_mode'], ['round_holes.round_id', 'round_holes.hole_num', 'round_holes.entry_mode'], ondelete='CASCADE', name='hole_summaries_round_id_hole_num_entry_mode_fkey'),
+        ForeignKeyConstraint(['round_id'], ['rounds.id'], ondelete='CASCADE', name='hole_summaries_round_id_fkey'),
+        PrimaryKeyConstraint('round_id', 'hole_num', name='hole_summaries_pkey')
+    )
+
+    round_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hole_num: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    putts: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('0'))
+    penalty_strokes: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('0'))
+    hole_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    entry_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'summary'::text"))
+
+    round_holes: Mapped['RoundHoles'] = relationship('RoundHoles', back_populates='hole_summaries')
+    round: Mapped['Rounds'] = relationship('Rounds', back_populates='hole_summaries')
+
+
 class Strokes(Base):
     __tablename__ = 'strokes'
     __table_args__ = (
         CheckConstraint('distance >= 0', name='strokes_distance_check'),
+        CheckConstraint("entry_mode = 'detailed'::text", name='strokes_entry_mode_check'),
         CheckConstraint('hole_num >= 1 AND hole_num <= 18', name='strokes_hole_num_check'),
         CheckConstraint("lie = ANY (ARRAY['tee'::text, 'fairway'::text, 'rough'::text, 'sand'::text, 'recovery'::text, 'green'::text])", name='strokes_lie_check'),
         CheckConstraint("miss_depth = ANY (ARRAY['short'::text, 'long'::text])", name='strokes_miss_depth_check'),
         CheckConstraint("miss_lr = ANY (ARRAY['far_left'::text, 'left'::text, 'right'::text, 'far_right'::text])", name='strokes_miss_lr_check'),
         CheckConstraint("miss_type = ANY (ARRAY['push'::text, 'pull'::text, 'hook'::text, 'slice'::text, 'top'::text, 'chunk'::text, 'alignment'::text])", name='strokes_miss_type_check'),
         CheckConstraint('penalty_strokes >= 0', name='strokes_penalty_strokes_check'),
+        CheckConstraint("penalty_type = ANY (ARRAY['fairway_bunker'::text, 'greenside_bunker'::text, 'yellow_penalty_area'::text, 'red_penalty_area'::text, 'out_of_bounds'::text])", name='strokes_penalty_type_check'),
         CheckConstraint('stroke_num >= 1', name='strokes_stroke_num_check'),
         ForeignKeyConstraint(['bag_club_id'], ['bag_clubs.id'], name='strokes_bag_club_id_fkey'),
+        ForeignKeyConstraint(['round_id', 'hole_num', 'entry_mode'], ['round_holes.round_id', 'round_holes.hole_num', 'round_holes.entry_mode'], ondelete='CASCADE', name='strokes_round_id_hole_num_entry_mode_fkey'),
         ForeignKeyConstraint(['round_id'], ['rounds.id'], ondelete='CASCADE', name='strokes_round_id_fkey'),
         PrimaryKeyConstraint('round_id', 'hole_num', 'stroke_num', name='strokes_pkey'),
         Index('strokes_club', 'bag_club_id')
@@ -286,10 +352,14 @@ class Strokes(Base):
     lie: Mapped[str] = mapped_column(Text, nullable=False)
     distance: Mapped[int] = mapped_column(Integer, nullable=False)
     penalty_strokes: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('0'))
+    hole_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
+    entry_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'detailed'::text"))
     bag_club_id: Mapped[Optional[int]] = mapped_column(Integer)
     miss_lr: Mapped[Optional[str]] = mapped_column(Text)
     miss_depth: Mapped[Optional[str]] = mapped_column(Text)
     miss_type: Mapped[Optional[str]] = mapped_column(Text)
+    penalty_type: Mapped[Optional[str]] = mapped_column(Text)
 
     bag_club: Mapped[Optional['BagClubs']] = relationship('BagClubs', back_populates='strokes')
+    round_holes: Mapped['RoundHoles'] = relationship('RoundHoles', back_populates='strokes')
     round: Mapped['Rounds'] = relationship('Rounds', back_populates='strokes')
