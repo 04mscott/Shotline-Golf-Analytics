@@ -1,26 +1,28 @@
-# Golf Data Analytics Application
+# Shotline
+
+## Golf Data Analytics Application
 
 This is a personal project I'm building for personal use to track my golf scores, equipment, and specifically, strokes gained and areas/clubs to prioritize.
 
-## Primary Goals
+### Primary Goals
 
 - Implement a user friendly UI for tracking data at the individual shot level in order to allow real-time tracking during play, without slowing pace of play on the course
 - Implement detailed analytics centered around strokes gained using the baseline expected stroke values found [here](https://pinflag.io/tools/expected-strokes-table), able to group by shot type, or even by specific club used
 - Track equipment down to minute details, from brand (Titleist, TaylorMade, etc.) to model (GTS2, Qi4D, etc.), even down to the shaft brand, flex, loft and lie angles, etc.
 - Implement an LLM chatbot to act as a digital caddie, walking the user through areas of their game that needs work and how to work on it, as well as working through equipment concerns/upgrades, and talking about how a round went or is going
 
-## Current Progress
+### Current Progress
 
 The PostgreSQL database is set up and running in Docker. The schema is managed with Alembic, and the SQLAlchemy models live in `src/golf/db/models.py`. The strokes gained calculation logic still lives in a Jupyter notebook and hasn't been moved into the package yet.
 
-### Design Decisions
+#### Design Decisions
 
 - **Postgres** holds only user-entered data: rounds, strokes, equipment, and handicap history. Course data is also loaded into Postgres, from static JSON files in `data/courses/`.
 - **Expected-strokes baselines** are static CSVs in `data/baselines/`, loaded into pandas dicts. They never go in the database.
 - **Handicap index** is an in-app estimate calculated from the rounds in the database. There's no GHIN integration, since there's no official API and I don't want to depend on an unofficial one.
 - **Analytics code** (`src/golf/analytics/`) takes DataFrames and dicts and never imports from `db/`, so it can be unit tested without a database.
 
-### Next Steps
+#### Next Steps
 
 - Write `scripts/load_courses.py` to upsert the course JSON into Postgres
 - Move the strokes gained logic from the notebook into `src/golf/analytics/`, with tests
@@ -29,14 +31,14 @@ The PostgreSQL database is set up and running in Docker. The schema is managed w
 - Implement advanced analytics features to display strokes gained data, focused around easy to understand visualizations using golf themed graphics, as well as a priority ranking of areas of the user's golf game to work on first
 - Add a Dockerfile and an `app` service to `docker-compose.yml`, then deploy in order to use on the course
 
-## Getting Started
+### Getting Started
 
-### Prerequisites
+#### Prerequisites
 
 - Docker Desktop
 - Python 3.11+
 
-### First-time setup
+#### First-time setup
 
 ```bash
 cp .env.example .env    # set DB_PASSWORD, and use the same password inside DATABASE_URL
@@ -57,7 +59,7 @@ Check that it worked:
 docker compose exec db psql -U golf -d golf -c '\dt'   # 13 tables + alembic_version
 ```
 
-### Day to day
+#### Day to day
 
 ```bash
 docker compose up -d          # start the database
@@ -71,7 +73,7 @@ docker compose stop           # stop it (data is kept)
 docker compose down -v && docker compose up -d && alembic upgrade head
 ```
 
-### Changing the schema
+#### Changing the schema
 
 `src/golf/db/models.py` is the source of truth.
 
