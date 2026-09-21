@@ -167,6 +167,19 @@ CREATE TABLE
         PRIMARY KEY (round_id, bag_club_id)
     );
 
+-- One row per hole played in a round, recording HOW it was entered. `strokes` and `hole_summaries`
+-- both reference this row with a composite FK that pins `entry_mode`, so a hole can have stroke rows
+-- or a summary row, never both. Insert the round_holes row first, then the child rows.
+-- To switch a hole's mode, delete its round_holes row (cascades to its strokes/summary) and re-enter it.
+CREATE TABLE
+    round_holes (
+        round_id int NOT NULL REFERENCES rounds (id) ON DELETE CASCADE,
+        hole_num smallint NOT NULL CHECK (hole_num BETWEEN 1 AND 18),
+        entry_mode text NOT NULL CHECK (entry_mode IN ('detailed', 'summary')),
+        PRIMARY KEY (round_id, hole_num),
+        UNIQUE (round_id, hole_num, entry_mode) -- target for the composite FKs below
+    );
+
 -- One row per stroke, describing where the ball was when the stroke started.
 -- The end position of a stroke is the start of the next one; the last stroke on a hole is the one that holed out.
 -- That is all a strokes-gained calculation needs: start lie + distance, the next stroke's start, and penalties.
@@ -206,16 +219,42 @@ CREATE TABLE
         ),
         -- Penalty strokes caused by THIS stroke (OB, lost ball, water, unplayable). Counts toward score, not stroke_num.
         penalty_strokes smallint NOT NULL DEFAULT 0 CHECK (penalty_strokes >= 0),
-        PRIMARY KEY (round_id, hole_num, stroke_num)
+        penalty_type text CHECK (
+            penalty_type IN (
+                'fairway_bunker',
+                'greenside_bunker',
+                'yellow_penalty_area',
+                'red_penalty_area',
+                'out_of_bounds'
+            )
+        ),
+        hole_completed boolean NOT NULL DEFAULT true,
+        entry_mode text NOT NULL DEFAULT 'detailed' CHECK (entry_mode = 'detailed'),
+        PRIMARY KEY (round_id, hole_num, stroke_num),
+        FOREIGN KEY (round_id, hole_num, entry_mode) REFERENCES round_holes (round_id, hole_num, entry_mode) ON DELETE CASCADE
     );
 
 CREATE INDEX strokes_club ON strokes (bag_club_id);
+
+CREATE TABLE
+    hole_summaries (
+        round_id int NOT NULL REFERENCES rounds (id) ON DELETE CASCADE,
+        hole_num smallint NOT NULL CHECK (hole_num BETWEEN 1 AND 18),
+        score smallint NOT NULL CHECK (score >= 1), -- what goes on the scorecard, penalties included
+        putts smallint NOT NULL DEFAULT 0 CHECK (putts >= 0),
+        penalty_strokes smallint NOT NULL DEFAULT 0 CHECK (penalty_strokes >= 0),
+        hole_completed boolean NOT NULL DEFAULT true,
+        entry_mode text NOT NULL DEFAULT 'summary' CHECK (entry_mode = 'summary'),
+        PRIMARY KEY (round_id, hole_num),
+        FOREIGN KEY (round_id, hole_num, entry_mode) REFERENCES round_holes (round_id, hole_num, entry_mode) ON DELETE CASCADE,
+        CHECK (putts + penalty_strokes <= score)
+    );
 
 -- =====================================================================
 -- Score views (derived, nothing extra to keep in sync)
 -- =====================================================================
 CREATE VIEW
-    hole_scores AS
+    detailed_hole_scores AS
 WITH
     first_putt AS (
         SELECT
@@ -239,23 +278,26 @@ SELECT
         WHERE
             s.lie = 'green'
     ) AS putts,
-    -- Green in regulation: on the green in (par - 2) strokes, penalties included.
-    COALESCE(
-        fp.n - 1 + COALESCE(
+    -- GIR: on the green (or holed out) in par - 2 strokes or fewer, penalties included.
+    CASE
+        WHEN fp.n IS NULL THEN COUNT(*) + SUM(s.penalty_strokes) <= h.par - 2
+        ELSE fp.n - 1 + COALESCE(
             SUM(s.penalty_strokes) FILTER (
                 WHERE
                     s.stroke_num < fp.n
             ),
             0
-        ) <= h.par - 2,
-        false
-    ) AS gir,
-    -- Fairway hit: par 4/5 where the second stroke starts on the fairway (or the green).
+        ) <= h.par - 2
+    END AS gir,
     CASE
         WHEN h.par > 3 THEN COALESCE(
             BOOL_OR (
                 s.stroke_num = 2
                 AND s.lie IN ('fairway', 'green')
+            )
+            AND NOT BOOL_OR (
+                s.stroke_num = 1
+                AND s.penalty_strokes > 0
             ),
             false
         )
@@ -271,7 +313,34 @@ GROUP BY
     s.round_id,
     s.hole_num,
     h.par,
-    fp.n;
+    fp.n
+HAVING
+    BOOL_AND (s.hole_completed);
+
+CREATE VIEW
+    hole_scores AS
+SELECT
+    round_id, hole_num, par, score, putts, gir, fairway_hit,
+    true AS detailed
+FROM
+    detailed_hole_scores
+UNION ALL
+SELECT
+    hs.round_id,
+    hs.hole_num,
+    h.par,
+    hs.score,
+    hs.putts,
+    hs.score - hs.putts <= h.par - 2 AS gir,
+    NULL::boolean AS fairway_hit,
+    false AS detailed
+FROM
+    hole_summaries hs
+    JOIN rounds r ON r.id = hs.round_id
+    JOIN holes h ON h.tee_id = r.tee_id
+    AND h.hole_num = hs.hole_num
+WHERE
+    hs.hole_completed;
 
 CREATE VIEW
     round_scores AS
@@ -284,10 +353,10 @@ SELECT
     SUM(hs.score) AS gross_score,
     SUM(hs.score - hs.par) AS to_par,
     SUM(hs.putts) AS putts,
-    COUNT(*) FILTER (
-        WHERE
-            hs.gir
-    ) AS greens_in_regulation
+    COUNT(*) FILTER (WHERE hs.gir) AS greens_in_regulation,
+    COUNT(hs.gir) AS gir_holes,
+    COUNT(*) FILTER (WHERE hs.fairway_hit) AS fairways_hit,
+    COUNT(hs.fairway_hit) AS fairway_holes
 FROM
     rounds r
     JOIN hole_scores hs ON hs.round_id = r.id
