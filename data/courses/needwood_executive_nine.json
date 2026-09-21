@@ -1,0 +1,61 @@
+{
+  "course": {
+    "id": "j3csht9w",
+    "club_name": "Needwood Gc",
+    "course_name": "Needwood Executive Nine",
+    "location": {
+      "address": "6724 Needwood Rd, Derwood, MD 20855, USA",
+      "city": "Derwood",
+      "state": "MD",
+      "country": "United States",
+      "latitude": 39.1217817,
+      "longitude": -77.1366134
+    },
+    "tees": {
+      "female": [
+        {
+          "tee_name": "Red",
+          "course_rating": 70.0,
+          "slope_rating": 110,
+          "total_yards": 1095,
+          "total_meters": 1001,
+          "number_of_holes": 9,
+          "par_total": 29,
+          "holes": [
+            { "par": 3, "yardage": 98, "handicap": 5 },
+            { "par": 3, "yardage": 53, "handicap": 9 },
+            { "par": 4, "yardage": 220, "handicap": 2 },
+            { "par": 3, "yardage": 73, "handicap": 8 },
+            { "par": 3, "yardage": 67, "handicap": 3 },
+            { "par": 3, "yardage": 74, "handicap": 7 },
+            { "par": 3, "yardage": 118, "handicap": 6 },
+            { "par": 4, "yardage": 319, "handicap": 1 },
+            { "par": 3, "yardage": 73, "handicap": 4 }
+          ]
+        }
+      ],
+      "male": [
+        {
+          "tee_name": "Yellow",
+          "course_rating": 70.0,
+          "slope_rating": 110,
+          "total_yards": 1532,
+          "total_meters": 1400,
+          "number_of_holes": 9,
+          "par_total": 29,
+          "holes": [
+            { "par": 3, "yardage": 170, "handicap": 5 },
+            { "par": 3, "yardage": 105, "handicap": 9 },
+            { "par": 4, "yardage": 275, "handicap": 2 },
+            { "par": 3, "yardage": 103, "handicap": 8 },
+            { "par": 3, "yardage": 87, "handicap": 3 },
+            { "par": 3, "yardage": 140, "handicap": 7 },
+            { "par": 3, "yardage": 160, "handicap": 6 },
+            { "par": 4, "yardage": 359, "handicap": 1 },
+            { "par": 3, "yardage": 133, "handicap": 4 }
+          ]
+        }
+      ]
+    }
+  }
+}

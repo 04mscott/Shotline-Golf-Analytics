@@ -1,0 +1,21 @@
+[project]
+name = "golf"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.1",
+    "alembic",
+    "pandas",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["sqlacodegen", "pytest"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
