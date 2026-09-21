@@ -1,4 +1,4 @@
-# Golf Data Aanalytics Application
+# Golf Data Analytics Application
 
 This is a personal project I'm building for personal use to track my golf scores, equipment, and specifically, strokes gained and areas/clubs to prioritize.
 
