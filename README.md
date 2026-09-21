@@ -18,3 +18,4 @@ This application is in the early mock-up stage, primarily existing as a Jupyter 
 - Develop the PostgreSQL database to store user, course, rounds, and equipment data
 - Implement an initial UI to begin integrating the backend logic with user the user facing front end
 - Implement advanced analytics features to display strokes gained data, focused around easy to understand visualizations using golf themed graphics, as well as a priority ranking of areas of the users golf game to work on first
+- Fully containerize application and eventually deploy in order to use on the course
