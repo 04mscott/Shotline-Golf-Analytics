@@ -2,8 +2,7 @@ import os
 
 from src.golf.analytics.baselines import get_expected_strokes
 from src.golf.analytics.strokes_gained import get_strokes_gained
-from src.golf.db.models import Strokes
-from src.golf.analytics.enums import Lie, Skill
+from src.golf.db.enums import Lie, Skill
 
 import pytest
 

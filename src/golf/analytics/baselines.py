@@ -1,4 +1,4 @@
-from src.golf.analytics.enums import Skill, Lie
+from src.golf.db.enums import Skill, Lie
 
 from functools import cache
 

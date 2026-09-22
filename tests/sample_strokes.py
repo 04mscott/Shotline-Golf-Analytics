@@ -1,5 +1,5 @@
 from src.golf.db.models import Strokes, Holes
-from src.golf.analytics.enums import Skill
+from src.golf.db.enums import Skill
 
 ROUND_ID = 1
 HOLE_NUM = 1

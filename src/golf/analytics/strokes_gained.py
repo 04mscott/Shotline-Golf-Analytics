@@ -1,5 +1,5 @@
 from src.golf.analytics.baselines import get_expected_strokes
-from src.golf.analytics.enums import Skill, Lie
+from src.golf.db.enums import Skill, Lie
 
 def get_strokes_gained(
         lie1: Lie | str,

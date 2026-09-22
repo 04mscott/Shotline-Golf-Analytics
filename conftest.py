@@ -5,8 +5,9 @@ import pandas as pd
 import pytest
 
 from src.golf.analytics import baselines as baselines_module
-from src.golf.analytics.enums import Lie, Skill
+from src.golf.db.enums import Lie, Skill
 from tests.sample_strokes import make_sample_data
+from tests.sample_rounds import make_sample_rounds_data
 
 
 # ---------------------------------------------------------------------------
@@ -123,3 +124,12 @@ def hole_1():
     """
     strokes, hole = make_sample_data()
     return strokes, hole
+
+
+# ---------------------------------------------------------------------------
+# Round fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def sample_rounds():
+    tee, rounds = make_sample_rounds_data()
+    return tee, rounds

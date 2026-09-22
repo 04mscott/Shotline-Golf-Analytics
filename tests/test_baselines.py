@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 
 from src.golf.analytics.baselines import get_baselines, get_expected_strokes
-from src.golf.analytics.enums import Lie, Skill
+from src.golf.db.enums import Lie, Skill
 
 
 class TestGetBaselines:

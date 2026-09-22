@@ -8,7 +8,7 @@ covered separately in test_baselines.py.
 import pytest
 
 from src.golf.analytics import strokes_gained as strokes_gained_module
-from src.golf.analytics.enums import Lie, Skill
+from src.golf.db.enums import Lie, Skill
 from src.golf.analytics.strokes_gained import get_strokes_gained
 
 
